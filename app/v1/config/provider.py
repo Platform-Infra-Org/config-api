@@ -5,7 +5,7 @@ from pymongo import AsyncMongoClient
 from aiocache import Cache
 from loguru import logger
 
-from .schemas import (
+from tashtiot_apis_library.fastapi_template.config_api import (
     LIVE_ALLOWED_NETWORKS, LIVE_ALLOWED_REGIONS, LIVE_ALLOWED_ISLANDS,
     LIVE_ALLOWED_ENVIRONMENTS, LIVE_ALLOWED_SPACES, LIVE_ALLOWED_PROJECTS,
     InfraMetadata,

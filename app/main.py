@@ -4,12 +4,14 @@ from fastapi import FastAPI
 import uvicorn
 from pymongo import AsyncMongoClient
 from tashtiot_apis_library import general_create_app
+from tashtiot_apis_library.fastapi_template.config_api import (
+    install_coordinate_validation_error_handler,
+    make_config_openapi,
+)
 
 from .v1.config.conf import config as config_v1_config
-from .v1.config.errors import install_coordinate_validation_error_handler
 from .v1.config.provider import MongoConfigProvider
 from .v1.config.routes import get_v1_config_router
-from .v1.config.openapi import make_config_openapi
 
 
 def create_app() -> FastAPI:
@@ -24,18 +26,6 @@ def create_app() -> FastAPI:
         cache_ttl_seconds=config_v1_config.CACHE_TTL_SECONDS,
     )
 
-    # The polling loop needs the app to invalidate its cached OpenAPI schema, but
-    # general_create_app wires background tasks at construction time. Resolve the
-    # app lazily through a holder — the coroutine only runs once lifespan starts,
-    # after the holder has been populated below.
-    app_holder = {}
-
-    async def _poll_config() -> None:
-        await config_provider.start_periodic_polling(
-            app_instance=app_holder["app"],
-            interval_seconds=config_v1_config.POLL_INTERVAL_SECONDS,
-        )
-
     # enable_auth declares the capability at the code level; the library's
     # AuthMiddleware is dual-gated, so it only actually registers when the
     # AUTH_ENABLED env var is also true (and exactly one verification material is
@@ -46,11 +36,9 @@ def create_app() -> FastAPI:
     # settings; see .env.
     app = general_create_app(
         enable_auth=True,
-        async_background_tasks=[_poll_config],
         title=config_v1_config.API_TITLE,
         version="1.0.0",
     )
-    app_holder["app"] = app
 
     # Single responsibility: the infrastructure Config API.
     app.include_router(get_v1_config_router(config_provider))
@@ -68,6 +56,17 @@ def create_app() -> FastAPI:
         config_path=f"{config_v1_config.API_PREFIX}/config",
         naming_path=f"{config_v1_config.API_PREFIX}/naming",
     )
+
+    # The poller needs `app` to invalidate its cached OpenAPI schema. Append it to
+    # the registry general_create_app's lifespan launches at startup (the same
+    # pattern the library's enable_remote_config_api uses) — the closure captures
+    # the constructed app directly, so no app_holder indirection is needed.
+    async def _poll_config() -> None:
+        await config_provider.start_periodic_polling(
+            app, interval_seconds=config_v1_config.POLL_INTERVAL_SECONDS,
+        )
+
+    app.state.async_background_tasks.append(_poll_config)
 
     return app
 

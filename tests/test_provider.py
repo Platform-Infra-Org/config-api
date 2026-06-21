@@ -1,8 +1,8 @@
 """MongoConfigProvider: config cascade, naming resolution, registry, polling."""
 import pytest
 
-from app.v1.config import schemas
-from app.v1.config.schemas import InfraMetadata
+from tashtiot_apis_library.fastapi_template import config_api as schemas
+from tashtiot_apis_library.fastapi_template.config_api import InfraMetadata
 from tests.conftest import make_provider
 from tests.fakes import FakeApp
 

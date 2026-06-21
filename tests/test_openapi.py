@@ -2,9 +2,9 @@
 import pytest
 from fastapi import FastAPI
 
-from app.v1.config import schemas
+from tashtiot_apis_library.fastapi_template import config_api as schemas
+from tashtiot_apis_library.fastapi_template.config_api import make_config_openapi
 from app.v1.config.conf import config
-from app.v1.config.openapi import make_config_openapi
 from app.v1.config.routes import get_v1_config_router
 from tests.conftest import make_provider
 

@@ -9,8 +9,10 @@ loguru>=0.7.0
 pymongo[srv]>=4.9.0
 aiocache>=0.12.0
 
-# Shared FastAPI app factory and connectors
-tashtiot-apis-library==0.0.1.dev1
+# Shared FastAPI app factory, connectors, and the Config API capability
+# (tashtiot_apis_library.fastapi_template.config_api — schemas, OpenAPI enum
+# patcher, coordinate 422 handler, and the LIVE_ALLOWED_* allowlists).
+tashtiot-apis-library>=0.0.1.dev26
 
 # Test tooling
 pytest==7.4.3

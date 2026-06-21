@@ -9,9 +9,11 @@ import copy
 import pytest
 from fastapi import FastAPI
 
-from app.v1.config import schemas
+from tashtiot_apis_library.fastapi_template import config_api as schemas
+from tashtiot_apis_library.fastapi_template.config_api import (
+    install_coordinate_validation_error_handler,
+)
 from app.v1.config.conf import config
-from app.v1.config.errors import install_coordinate_validation_error_handler
 from app.v1.config.provider import MongoConfigProvider
 from app.v1.config.routes import get_v1_config_router
 from tests.fakes import FakeCollection, FakeMongoClient

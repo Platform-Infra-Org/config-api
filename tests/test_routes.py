@@ -75,7 +75,7 @@ class TestCoordinateValidationAtHttpLayer:
     """
 
     def test_config_disallowed_value_returns_422(self, client, api_prefix):
-        from app.v1.config import schemas
+        from tashtiot_apis_library.fastapi_template import config_api as schemas
         schemas.LIVE_ALLOWED_PROJECTS.update({"payment-gateway"})
         params = _config_params()
         params["project"] = "intruder-app"
@@ -89,7 +89,7 @@ class TestCoordinateValidationAtHttpLayer:
     def test_naming_disallowed_value_returns_422(self, client, api_prefix):
         # The /naming route uses the all-optional InfraMetadata; the same
         # allowlist rejection must also yield 422 there.
-        from app.v1.config import schemas
+        from tashtiot_apis_library.fastapi_template import config_api as schemas
         schemas.LIVE_ALLOWED_NETWORKS.update({"backbone-net"})
         resp = client.get(f"{api_prefix}/naming", params={"network": "ghost-net"})
         assert resp.status_code == 422
@@ -97,7 +97,7 @@ class TestCoordinateValidationAtHttpLayer:
 
     def test_allowed_value_still_resolves_200(self, client, api_prefix):
         # Regression: populating the allowlist must not break valid requests.
-        from app.v1.config import schemas
+        from tashtiot_apis_library.fastapi_template import config_api as schemas
         schemas.LIVE_ALLOWED_PROJECTS.update({"payment-gateway"})
         resp = client.get(f"{api_prefix}/config", params=_config_params())
         assert resp.status_code == 200

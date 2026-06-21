@@ -30,7 +30,9 @@ from tashtiot_apis_library import general_create_app
 from tashtiot_apis_library.fastapi_template._internal.utils import settings as lib_settings
 from tashtiot_apis_library.fastapi_template._internal.security import verifier as verifier_mod
 
-from app.v1.config.errors import install_coordinate_validation_error_handler
+from tashtiot_apis_library.fastapi_template.config_api import (
+    install_coordinate_validation_error_handler,
+)
 from app.v1.config.routes import get_v1_config_router
 
 
@@ -79,6 +81,7 @@ def reset_library_auth_settings(monkeypatch):
         "AUTH_HEADER_NAME": "Authorization",
         "AUTH_HS256_SECRET": None,
         "AUTH_JWKS_URL": None,
+        "AUTH_OIDC_ISSUER": None,
         "AUTH_PUBLIC_KEY_PEM": None,
         "AUTH_PUBLIC_KEY_PATH": None,
         "AUTH_ALGORITHMS": ["RS256"],

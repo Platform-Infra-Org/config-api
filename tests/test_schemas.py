@@ -6,8 +6,8 @@ allowlist set is empty, and permissive for omitted (``None``) coordinates.
 import pytest
 from pydantic import ValidationError
 
-from app.v1.config import schemas
-from app.v1.config.schemas import InfraMetadata, RequiredInfraMetadata
+from tashtiot_apis_library.fastapi_template import config_api as schemas
+from tashtiot_apis_library.fastapi_template.config_api import InfraMetadata, RequiredInfraMetadata
 
 
 # Each coordinate field paired with the allowlist set that governs it.

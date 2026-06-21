@@ -42,8 +42,9 @@ python seed_config.py                 # seed the 3 governing docs — DESTRUCTIV
 python -m app.main                    # run the API
 ```
 
-`pytest` and coverage plugins are declared in `requirements.txt`, but **no test suite exists yet** —
-there is no `tests/` directory. Add tests under a new `tests/` dir if asked.
+A `pytest` suite lives under `tests/` (run `pytest`); it uses a fake Mongo (`tests/fakes.py`) and the
+seed shapes mirror `seed_config.py`. `test_auth.py` exercises the library's auth gating; the rest cover
+the Mongo provider, routes, schemas, and OpenAPI enum injection.
 
 ## Configuration
 
@@ -55,12 +56,16 @@ Env-driven via `app/v1/config/conf.py` (`BaseSettings`, reads `.env`); see `.env
 - **`main.py`** (`create_app()`) — builds the `AsyncMongoClient` + `MongoConfigProvider`, registers the
   poller via the library factory's `async_background_tasks`, includes the router, installs the OpenAPI patcher.
 - **`provider.py`** (`MongoConfigProvider`) — all Mongo access, `aiocache` (60s TTL), config cascade,
-  naming resolution, project registry, and the background allowlist-sync loop.
-- **`schemas.py`** — `InfraMetadata` (all-optional) / `RequiredInfraMetadata` (strict), response models,
-  and the mutable module-level `LIVE_ALLOWED_*` sets.
-- **`openapi.py`** (`make_config_openapi`) — injects the live allowlists as `enum` values into the
-  config/naming query parameters.
+  naming resolution, project registry, and the background allowlist-sync loop. This service is the
+  Mongo-backed **origin**; the library only ships a remote HTTP-proxy provider (`RemoteConfigProvider`),
+  so this provider stays local.
 - **`routes.py`** — `/projects`, `/config` (strict, 422 if any coordinate missing), `/naming` (all optional).
+
+The schemas, response models, the OpenAPI enum patcher (`make_config_openapi`), the coordinate-validation
+422 handler (`install_coordinate_validation_error_handler`), and the `LIVE_ALLOWED_*` allowlist sets are
+**no longer defined here** — they are consumed from the library at
+`tashtiot_apis_library.fastapi_template.config_api`. `provider.py`/`routes.py`/`main.py` import them from
+there. Do not reintroduce local copies; general capabilities live in the library.
 
 ### The three MongoDB documents (collection `global_configs`, keyed by `doc_type`)
 
@@ -74,12 +79,14 @@ Env-driven via `app/v1/config/conf.py` (`BaseSettings`, reads `.env`); see `.env
 
 ### Dynamic validation & OpenAPI enums (non-obvious — read before editing)
 
-The `LIVE_ALLOWED_*` sets in `schemas.py` are **mutable module globals**, not static config. They are
-the single source of truth for BOTH Pydantic request validation (the `field_validator`s) AND the
-Swagger enum dropdowns (`openapi.py`). A background loop (`provider.start_periodic_polling`, every
-`POLL_INTERVAL_SECONDS`) reads the `naming_conventions` and `project_registry` docs, repopulates the
-sets **in place** (`.clear()` + `.update()` — never reassign), and nulls `app.openapi_schema` so the
-next schema request regenerates with current enums.
+The `LIVE_ALLOWED_*` sets (now in the library's `config_api.schemas`) are **mutable module globals**, not
+static config. They are the single source of truth for BOTH Pydantic request validation (the library's
+`field_validator`s) AND the Swagger enum dropdowns (the library's `make_config_openapi`). This service's
+`provider.crawl_and_sync_keys` imports those **same** set objects and a background loop
+(`provider.start_periodic_polling`, every `POLL_INTERVAL_SECONDS`) reads the `naming_conventions` and
+`project_registry` docs, repopulates the sets **in place** (`.clear()` + `.update()` — never reassign,
+or the library would stop seeing the updates), and nulls `app.openapi_schema` so the next schema request
+regenerates with current enums.
 
 Two guards that must be preserved when editing validators:
 - Validators are **permissive when the allowlist set is empty** (pre-first-poll / missing document).

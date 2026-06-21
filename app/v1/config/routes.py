@@ -3,7 +3,7 @@ from loguru import logger
 
 from .conf import config
 from .provider import MongoConfigProvider
-from .schemas import (
+from tashtiot_apis_library.fastapi_template.config_api import (
     InfraMetadata, RequiredInfraMetadata,
     ConfigResolutionResponse, NamingConventionResponse, AllProjectsResponse,
 )
