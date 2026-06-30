@@ -182,3 +182,33 @@ class TestCoordinateCatalog:
         hits = provider._fake_collection.find_one_calls
         await provider.get_coordinate_catalog()
         assert provider._fake_collection.find_one_calls == hits
+
+
+class TestCoordinateTree:
+    async def test_returns_nested_hierarchy(self, provider):
+        tree = await provider.get_coordinate_tree()
+        assert tree == {
+            "coordinates": {
+                "core-infrastructure": {
+                    "backbone-net": {
+                        "us-east": {
+                            "compute-island-a": ["production", "staging"],
+                        }
+                    }
+                }
+            },
+            "projects": [
+                "authentication-service", "data-warehouse-pipeline",
+                "notification-engine", "payment-gateway",
+            ],
+        }
+
+    async def test_empty_when_unseeded(self, empty_provider):
+        tree = await empty_provider.get_coordinate_tree()
+        assert tree == {"coordinates": {}, "projects": []}
+
+    async def test_cached_after_first_fetch(self, provider):
+        await provider.get_coordinate_tree()
+        hits = provider._fake_collection.find_one_calls
+        await provider.get_coordinate_tree()
+        assert provider._fake_collection.find_one_calls == hits

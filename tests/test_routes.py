@@ -52,6 +52,30 @@ class TestCoordinatesRoute:
             "island": [], "environment": [], "projects": [],
         }
 
+    def test_tree_route_returns_nested_dict(self, client, api_prefix):
+        resp = client.get(f"{api_prefix}/coordinates/tree")
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "coordinates": {
+                "core-infrastructure": {
+                    "backbone-net": {
+                        "us-east": {
+                            "compute-island-a": ["production", "staging"],
+                        }
+                    }
+                }
+            },
+            "projects": [
+                "authentication-service", "data-warehouse-pipeline",
+                "notification-engine", "payment-gateway",
+            ],
+        }
+
+    def test_tree_route_empty_catalog(self, empty_client, api_prefix):
+        resp = empty_client.get(f"{api_prefix}/coordinates/tree")
+        assert resp.status_code == 200
+        assert resp.json() == {"coordinates": {}, "projects": []}
+
 
 class TestConfigRoute:
     def test_full_coordinates_resolve_200(self, client, api_prefix):

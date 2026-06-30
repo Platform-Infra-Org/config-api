@@ -6,7 +6,7 @@ from .provider import MongoConfigProvider
 from tashtiot_apis_library.fastapi_template.config_api import (
     InfraMetadata, RequiredInfraMetadata,
     ConfigResolutionResponse, NamingConventionResponse, AllProjectsResponse,
-    CoordinateCatalogResponse,
+    CoordinateCatalogResponse, CoordinateTreeResponse,
 )
 
 
@@ -35,6 +35,14 @@ def get_v1_config_router(provider: MongoConfigProvider) -> APIRouter:
         valid response — no 404."""
         catalog = await provider.get_coordinate_catalog()
         return CoordinateCatalogResponse(**catalog)
+
+    @router.get("/coordinates/tree", response_model=CoordinateTreeResponse, name="List coordinate values as a tree")
+    async def list_coordinate_tree() -> CoordinateTreeResponse:
+        """Nested variant of ``/coordinates``: the same values shaped as the config
+        hierarchy (space → network → region → island → sorted env list), with
+        ``projects`` flat alongside. Empty tree (nothing seeded yet) is a valid 200."""
+        tree = await provider.get_coordinate_tree()
+        return CoordinateTreeResponse(**tree)
 
     @router.get("/config", response_model=ConfigResolutionResponse, name="Resolve cascading config")
     async def fetch_infrastructure_configurations(

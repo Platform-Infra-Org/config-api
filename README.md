@@ -83,6 +83,7 @@ with `AUTH_OIDC_ISSUER` / `AUTH_JWKS_URL`.
 |---------------|---------|
 | `GET /projects` | All authorized projects from the registry |
 | `GET /coordinates` | Discovery: valid values per coordinate level (`space`/`network`/`region`/`island`/`environment`) collected from the **enterprise config tree**, plus `projects` from the registry (200 with empty arrays when unseeded) |
+| `GET /coordinates/tree` | Same discovery values shaped as the nested config hierarchy (`coordinates`: space → network → region → island → sorted env list), plus flat `projects` (200 with empty tree when unseeded) |
 | `GET /config`   | Cascading config resolution — **all** coordinates required (strict 422 if missing) |
 | `GET /naming`   | Naming tokens for the given coordinates; with none supplied, the entire naming dictionary |
 
@@ -96,7 +97,8 @@ All routes are read-only `GET`s, so every coordinate binds from **query paramete
   `scripts/seed_config.py`. `EnterpriseConfigurationDoc` is **fully nested** (typed `SpaceNode → NetworkNode
   → RegionNode → IslandNode → EnvironmentNode`, `extra="forbid"`); per-level `config` payloads and the
   naming values stay free-form by design. The shared coordinate/response contract — including
-  `CoordinateCatalogResponse` for `/coordinates` — comes from the library's `config_api`.
+  `CoordinateCatalogResponse` for `/coordinates` and `CoordinateTreeResponse` for `/coordinates/tree`
+  — comes from the library's `config_api`.
 - **`provider.py`** — `MongoConfigProvider`: all Mongo access (one handle per collection), `aiocache`
   (60s TTL), cascading config resolution, naming resolution, project registry, the coordinate catalog, and
   the background allowlist-sync loop. This service is the Mongo-backed **origin**; the library only ships a

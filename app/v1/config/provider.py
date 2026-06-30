@@ -198,3 +198,34 @@ class MongoConfigProvider:
 
         await self._cache.set(cache_key, catalog, ttl=self._cache_ttl)
         return catalog
+
+    async def get_coordinate_tree(self) -> Dict[str, Any]:
+        """Return the coordinate values as a nested hierarchy plus the project list.
+
+        Nested variant of :meth:`get_coordinate_catalog`: instead of unioning keys
+        into flat lists, it preserves the **enterprise configuration tree** shape
+        (space → network → region → island), with the deepest level being the
+        sorted list of environment names. Projects stay flat alongside."""
+        cache_key = "global:coordinate_tree"
+
+        cached = await self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        config_doc = await self.enterprise.find_one({}) or {}
+        project_doc = await self.projects.find_one({}) or {}
+
+        tree: Dict[str, Any] = {}
+        for space_name, space_node in config_doc.get("space", {}).items():
+            networks = tree.setdefault(space_name, {})
+            for network_name, network_node in space_node.get("network", {}).items():
+                regions = networks.setdefault(network_name, {})
+                for region_name, region_node in network_node.get("region", {}).items():
+                    islands = regions.setdefault(region_name, {})
+                    for island_name, island_node in region_node.get("island", {}).items():
+                        islands[island_name] = sorted(island_node.get("environment", {}).keys())
+
+        result = {"coordinates": tree, "projects": sorted(project_doc.get("projects", []))}
+
+        await self._cache.set(cache_key, result, ttl=self._cache_ttl)
+        return result

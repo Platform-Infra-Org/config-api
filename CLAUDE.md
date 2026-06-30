@@ -66,8 +66,9 @@ Env-driven via `app/v1/config/conf.py` (`BaseSettings`, reads `.env`); see `.env
   RegionNode → IslandNode → EnvironmentNode`, `extra="forbid"`); per-level `config` payloads stay
   free-form. `CoordinateCatalogResponse` is **not** here — it's consumed from the library's `config_api`.
 - **`routes.py`** — `/projects`, `/coordinates` (discovery, sourced from the enterprise config tree;
-  200 + empty arrays when unseeded), `/config` (strict, 422 if any coordinate missing), `/naming`
-  (all optional).
+  200 + empty arrays when unseeded), `/coordinates/tree` (same values as the nested hierarchy via
+  `provider.get_coordinate_tree`, typed `CoordinateTreeResponse`), `/config` (strict, 422 if any
+  coordinate missing), `/naming` (all optional).
 
 The shared coordinate schemas, response models, the OpenAPI enum patcher (`make_config_openapi`), the
 coordinate-validation 422 handler (`install_coordinate_validation_error_handler`), and the `LIVE_ALLOWED_*`
