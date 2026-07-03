@@ -37,27 +37,25 @@ class MongoConfigProvider:
     async def crawl_and_sync_keys(self, app_instance) -> None:
         """Discover allowed coordinate values from Mongo and hot-patch the live
         allowlists, then invalidate the cached Swagger schema so the enum
-        dropdowns regenerate on the next request."""
-        try:
-            # 1. Naming convention coordinate tokens
-            naming_doc = await self.naming.find_one({})
-            if naming_doc:
-                LIVE_ALLOWED_NETWORKS.clear()
-                LIVE_ALLOWED_NETWORKS.update(naming_doc.get("network", {}).keys())
-                LIVE_ALLOWED_REGIONS.clear()
-                LIVE_ALLOWED_REGIONS.update(naming_doc.get("region", {}).keys())
-                LIVE_ALLOWED_ISLANDS.clear()
-                LIVE_ALLOWED_ISLANDS.update(naming_doc.get("island", {}).keys())
-                LIVE_ALLOWED_ENVIRONMENTS.clear()
-                LIVE_ALLOWED_ENVIRONMENTS.update(naming_doc.get("environment", {}).keys())
-                LIVE_ALLOWED_SPACES.clear()
-                LIVE_ALLOWED_SPACES.update(naming_doc.get("space", {}).keys())
+        dropdowns regenerate on the next request.
 
-            # 2. Global project registry catalog
-            project_doc = await self.projects.find_one({})
-            if project_doc:
-                LIVE_ALLOWED_PROJECTS.clear()
-                LIVE_ALLOWED_PROJECTS.update(project_doc.get("projects", []))
+        Coordinate values come from the **enterprise configuration tree** (via
+        ``get_coordinate_catalog``) — the authoritative source of which nodes
+        exist — not the naming doc; projects come from the same catalog."""
+        try:
+            catalog = await self.get_coordinate_catalog()
+            for live_set, key in (
+                (LIVE_ALLOWED_SPACES, "space"),
+                (LIVE_ALLOWED_NETWORKS, "network"),
+                (LIVE_ALLOWED_REGIONS, "region"),
+                (LIVE_ALLOWED_ISLANDS, "island"),
+                (LIVE_ALLOWED_ENVIRONMENTS, "environment"),
+                (LIVE_ALLOWED_PROJECTS, "projects"),
+            ):
+                values = catalog.get(key, [])
+                if values:  # stay permissive when a level is unseeded/empty
+                    live_set.clear()
+                    live_set.update(values)
 
             # Invalidate the cached OpenAPI schema so it regenerates with fresh enums.
             app_instance.openapi_schema = None

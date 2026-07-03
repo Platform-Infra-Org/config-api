@@ -118,7 +118,9 @@ class TestCrawlAndSyncKeys:
         assert schemas.LIVE_ALLOWED_REGIONS == {"us-east"}
         assert schemas.LIVE_ALLOWED_ISLANDS == {"compute-island-a"}
         assert schemas.LIVE_ALLOWED_ENVIRONMENTS == {"staging", "production"}
-        assert schemas.LIVE_ALLOWED_SPACES == {"core-infrastructure", "tenant-alpha"}
+        # Sourced from the config tree, which only configures `core-infrastructure`
+        # (`tenant-alpha` lives in the naming doc but has no config node).
+        assert schemas.LIVE_ALLOWED_SPACES == {"core-infrastructure"}
         assert schemas.LIVE_ALLOWED_PROJECTS == {
             "payment-gateway", "authentication-service",
             "notification-engine", "data-warehouse-pipeline",
@@ -144,8 +146,8 @@ class TestCrawlAndSyncKeys:
         async def boom(_query):
             raise RuntimeError("mongo down")
 
-        # crawl reads the naming collection first; make that blow up.
-        monkeypatch.setattr(prov.naming, "find_one", boom)
+        # crawl reads the enterprise config tree first; make that blow up.
+        monkeypatch.setattr(prov.enterprise, "find_one", boom)
         app = FakeApp()
         await prov.crawl_and_sync_keys(app)  # should not raise
         # Failed before reaching the invalidation line.
