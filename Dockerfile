@@ -1,5 +1,9 @@
 FROM harbor.app.com/devops-infra/generic-python39:1.0.0
 
+# App version shown in the Swagger UI; pass --build-arg APP_VERSION=<git-tag> in CI.
+ARG APP_VERSION=v1.0.0
+ENV APP_VERSION=${APP_VERSION}
+
 ENV UV_LINK_MODE=copy
 
 RUN pip install --upgrade pip uv

@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
     app = general_create_app(
         enable_auth=True,
         title=config_v1_config.API_TITLE,
-        version="1.0.0",
+        version=config_v1_config.APP_VERSION,
     )
 
     # Single responsibility: the infrastructure Config API.
@@ -55,8 +55,10 @@ def create_app() -> FastAPI:
     # scheme when auth is enabled), so the Swagger Authorize tab is preserved.
     app.openapi = make_config_openapi(
         app,
-        config_path=f"{config_v1_config.API_PREFIX}/config",
-        naming_path=f"{config_v1_config.API_PREFIX}/naming",
+        coordinate_paths=[
+            f"{config_v1_config.API_PREFIX}/config",
+            f"{config_v1_config.API_PREFIX}/naming",
+        ],
     )
 
     # The poller needs `app` to invalidate its cached OpenAPI schema. Append it to

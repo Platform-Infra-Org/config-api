@@ -18,7 +18,7 @@ def app_with_openapi(seed_docs):
     provider, _ = make_provider(seed_docs)
     app = FastAPI(title="Test API", version="1.0.0")
     app.include_router(get_v1_config_router(provider))
-    app.openapi = make_config_openapi(app, config_path=CONFIG_PATH, naming_path=NAMING_PATH)
+    app.openapi = make_config_openapi(app, coordinate_paths=[CONFIG_PATH, NAMING_PATH])
     return app
 
 
@@ -45,9 +45,12 @@ class TestEnumInjection:
         assert config_params["project"]["schema"]["enum"] == sorted(
             ["payment-gateway", "authentication-service"]
         )
-        # Enums applied to the naming route too.
+        # Enums applied to the naming route too — network is Optional there, so the enum
+        # lives inside the anyOf string branch (where Swagger renders the dropdown).
         naming_params = _params_for(schema, NAMING_PATH)
-        assert naming_params["network"]["schema"]["enum"] == ["backbone-net", "edge-net"]
+        naming_network = naming_params["network"]["schema"]
+        string_branch = next(b for b in naming_network["anyOf"] if b.get("type") == "string")
+        assert string_branch["enum"] == ["backbone-net", "edge-net"]
 
     def test_schema_is_cached_until_invalidated(self, app_with_openapi):
         first = app_with_openapi.openapi()
