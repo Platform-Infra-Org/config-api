@@ -18,7 +18,7 @@ def app_with_openapi(seed_docs):
     provider, _ = make_provider(seed_docs)
     app = FastAPI(title="Test API", version="1.0.0")
     app.include_router(get_v1_config_router(provider))
-    app.openapi = make_config_openapi(app, config_path=CONFIG_PATH, naming_path=NAMING_PATH)
+    app.openapi = make_config_openapi(app, coordinate_paths=[CONFIG_PATH, NAMING_PATH])
     return app
 
 

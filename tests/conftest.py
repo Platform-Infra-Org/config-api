@@ -94,9 +94,11 @@ def reset_live_allowlists():
     ]
     for s in sets:
         s.clear()
+    schemas.LIVE_COORDINATE_TREE.clear()
     yield
     for s in sets:
         s.clear()
+    schemas.LIVE_COORDINATE_TREE.clear()
 
 
 ENTERPRISE_COLLECTION = "enterprise_configuration"
