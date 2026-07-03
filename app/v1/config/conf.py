@@ -13,6 +13,11 @@ class ConfigV1Settings(BaseSettings):
         description="API title shown in the Swagger UI.",
     )
 
+    APP_VERSION: str = Field(
+        default="v1.0.0",
+        description="Release version shown in the Swagger UI; injected at image build time from the git tag (see README).",
+    )
+
     MONGO_URI: str = Field(
         default="mongodb://localhost:27017",
         description="Connection URI for the MongoDB instance backing the Config API.",

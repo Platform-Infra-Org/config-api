@@ -27,6 +27,10 @@ uv run python -m app.main
 
 Swagger UI at `/docs`, metrics at `/metrics` (both provided by the library factory).
 
+The **app version** shown in the Swagger UI comes from the `APP_VERSION` env var (default `v1.0.0`).
+CI should pass the release tag when building the image
+(`docker build --build-arg APP_VERSION=<git-tag> .`); the Dockerfile bakes it into `ENV APP_VERSION`.
+
 ### Dependencies with uv
 
 This project uses [uv](https://docs.astral.sh/uv/). Dependencies are declared in

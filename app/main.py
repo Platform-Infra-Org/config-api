@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
     app = general_create_app(
         enable_auth=True,
         title=config_v1_config.API_TITLE,
-        version="1.0.0",
+        version=config_v1_config.APP_VERSION,
     )
 
     # Single responsibility: the infrastructure Config API.
