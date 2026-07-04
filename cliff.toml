@@ -39,7 +39,11 @@ commit_parsers = [
   { message = "^perf", group = "<3>Changed" },
   { message = "^docs", group = "<4>Documentation" },
   { message = "^revert", group = "<5>Reverted" },
-  { message = "^(build|ci)", group = "<6>Build & CI" },
+  # `build` can change dependencies/packaging (ships), so it stays a releasing type;
+  # `ci` only touches CI config (never shipped), so it's shown but doesn't release --
+  # the release-pr gate excludes it, same as `docs`.
+  { message = "^build", group = "<6>Build" },
+  { message = "^ci", group = "<7>CI" },
   # Housekeeping that shouldn't appear in user-facing release notes.
   { message = "^(chore|style|test)", skip = true },
   { body = ".*security", group = "<0>Security" },
