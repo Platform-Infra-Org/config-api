@@ -214,3 +214,28 @@ class TestCoordinateTree:
         hits = provider._fake_collection.find_one_calls
         await provider.get_coordinate_tree()
         assert provider._fake_collection.find_one_calls == hits
+
+
+class TestAddProject:
+    async def test_new_name_is_appended_and_reported_created(self, provider):
+        assert await provider.add_project("platform") is True
+        assert "platform" in await provider.get_all_projects()
+
+    async def test_existing_name_is_not_duplicated(self, provider):
+        assert await provider.add_project("payment-gateway") is False
+        projects = await provider.get_all_projects()
+        assert projects.count("payment-gateway") == 1
+
+    async def test_upserts_the_registry_document_when_unseeded(self, empty_provider):
+        assert await empty_provider.add_project("platform") is True
+        assert await empty_provider.get_all_projects() == ["platform"]
+
+    async def test_invalidates_the_cached_project_list(self, provider):
+        await provider.get_all_projects()  # warm the cache
+        await provider.add_project("platform")
+        assert "platform" in await provider.get_all_projects()
+
+    async def test_invalidates_the_cached_coordinate_catalog(self, provider):
+        await provider.get_coordinate_catalog()  # warm the cache
+        await provider.add_project("platform")
+        assert "platform" in (await provider.get_coordinate_catalog())["projects"]

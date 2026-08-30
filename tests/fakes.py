@@ -26,6 +26,23 @@ class FakeCollection:
                 return copy.deepcopy(doc)
         return None
 
+    async def update_one(
+        self, query: Dict[str, Any], update: Dict[str, Any], upsert: bool = False
+    ) -> "FakeUpdateResult":
+        """Supports only ``$addToSet`` — the single operator the provider uses."""
+        field, value = next(iter(update["$addToSet"].items()))
+        for doc in self._docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                values = doc.setdefault(field, [])
+                if value in values:
+                    return FakeUpdateResult(1, 0, None)
+                values.append(value)
+                return FakeUpdateResult(1, 1, None)
+        if not upsert:
+            return FakeUpdateResult(0, 0, None)
+        self._docs.append({**query, field: [value]})
+        return FakeUpdateResult(0, 0, "fake-upserted-id")
+
 
 class CallCounter:
     """Aggregates ``find_one_calls`` across collections so cache assertions can
@@ -64,3 +81,12 @@ class FakeApp:
 
     def __init__(self):
         self.openapi_schema: Any = "stale-cached-schema"
+
+
+class FakeUpdateResult:
+    """Mirrors the fields of a pymongo ``UpdateResult`` the provider reads."""
+
+    def __init__(self, matched_count: int, modified_count: int, upserted_id: Optional[str]):
+        self.matched_count = matched_count
+        self.modified_count = modified_count
+        self.upserted_id = upserted_id

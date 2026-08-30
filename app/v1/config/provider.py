@@ -153,6 +153,23 @@ class MongoConfigProvider:
         await self._cache.set(cache_key, result_list, ttl=self._cache_ttl)
         return result_list
 
+    async def add_project(self, name: str) -> bool:
+        """Register a project in the registry document. Returns True when the name
+        was newly added, False when it was already registered.
+
+        ``$addToSet`` makes this atomic and idempotent in Mongo itself — no
+        read-check-write race between concurrent registrations — and ``upsert``
+        creates the registry document when the collection has never been seeded."""
+        result = await self.projects.update_one(
+            {}, {"$addToSet": {"projects": name}}, upsert=True,
+        )
+        created = result.modified_count > 0 or result.upserted_id is not None
+        if created:
+            # ponytail: flush everything rather than track which keys carry
+            # projects. Registrations are rare; the cost is a few Mongo reads.
+            await self._cache.clear()
+        return created
+
     async def get_coordinate_catalog(self) -> Dict[str, List[str]]:
         """Return the valid values for every coordinate level plus the project list.
 

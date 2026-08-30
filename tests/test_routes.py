@@ -3,6 +3,7 @@
 The ``LIVE_ALLOWED_*`` sets are empty here (autouse reset), so coordinate
 validation is permissive and we control 422/404/200 purely via route logic.
 """
+import pytest
 
 
 def _config_params():
@@ -25,6 +26,37 @@ class TestProjectsRoute:
         resp = empty_client.get(f"{api_prefix}/projects")
         assert resp.status_code == 404
         assert "empty" in resp.json()["detail"].lower()
+
+
+class TestCreateProjectRoute:
+    def test_registers_a_new_project(self, client, api_prefix):
+        resp = client.post(f"{api_prefix}/projects", json={"name": "platform"})
+        assert resp.status_code == 201
+        assert resp.json() == {"name": "platform"}
+
+    def test_new_project_is_visible_immediately(self, client, api_prefix):
+        client.get(f"{api_prefix}/projects")  # warm the provider cache
+        client.post(f"{api_prefix}/projects", json={"name": "platform"})
+        assert "platform" in client.get(f"{api_prefix}/projects").json()["projects"]
+
+    def test_registering_an_existing_project_returns_200(self, client, api_prefix):
+        resp = client.post(f"{api_prefix}/projects", json={"name": "payment-gateway"})
+        assert resp.status_code == 200
+        assert resp.json() == {"name": "payment-gateway"}
+
+    def test_registers_into_an_unseeded_registry(self, empty_client, api_prefix):
+        assert empty_client.post(f"{api_prefix}/projects", json={"name": "platform"}).status_code == 201
+        assert empty_client.get(f"{api_prefix}/projects").json()["projects"] == ["platform"]
+
+    @pytest.mark.parametrize(
+        "name", ["Platform", "my_project", "pl at form", "", "x", "-platform", "platform-", "a" * 65],
+    )
+    def test_rejects_malformed_names(self, client, api_prefix, name):
+        assert client.post(f"{api_prefix}/projects", json={"name": name}).status_code == 422
+
+    def test_rejects_unknown_body_fields(self, client, api_prefix):
+        resp = client.post(f"{api_prefix}/projects", json={"name": "platform", "owner": "infra"})
+        assert resp.status_code == 422
 
 
 class TestCoordinatesRoute:

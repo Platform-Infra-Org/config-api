@@ -117,12 +117,15 @@ with `AUTH_OIDC_ISSUER` / `AUTH_JWKS_URL`.
 | Method & path | Purpose |
 |---------------|---------|
 | `GET /projects` | All authorized projects from the registry |
+| `POST /projects` | Register a project in the registry — body `{"name": "platform"}`. **201** when newly registered, **200** when it already exists (idempotent). Names must be kebab-case slugs (`^[a-z0-9]+(-[a-z0-9]+)*$`, 2-64 chars); anything else is a 422 |
 | `GET /coordinates` | Discovery: valid values per coordinate level (`space`/`network`/`region`/`island`/`environment`) collected from the **enterprise config tree**, plus `projects` from the registry (200 with empty arrays when unseeded) |
 | `GET /coordinates/tree` | Same discovery values shaped as the nested config hierarchy (`coordinates`: space → network → region → island → sorted env list), plus flat `projects` (200 with empty tree when unseeded) |
 | `GET /config`   | Cascading config resolution — **all** coordinates required (strict 422 if missing) |
 | `GET /naming`   | Naming tokens for the given coordinates; with none supplied, the entire naming dictionary |
 
-All routes are read-only `GET`s, so every coordinate binds from **query parameters** via `Depends()`.
+Every read route is a `GET`, so coordinates bind from **query parameters** via `Depends()`. `POST /projects`
+is the only write route and the only one taking a request body; a newly registered project becomes a valid
+`project` coordinate (and Swagger enum value) within `POLL_INTERVAL_SECONDS`.
 
 ## Architecture (`app/v1/config/`)
 

@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A standalone FastAPI service that resolves hierarchical infrastructure **configuration** and
 **naming conventions** from MongoDB. Clients pass allocation coordinates
 (`space → network → region → island → environment`, plus `project`) as query parameters and
-receive resolved config keys or naming tokens via layered inheritance. All routes are read-only `GET`s.
+receive resolved config keys or naming tokens via layered inheritance. Every read route is a `GET`;
+the one write route is `POST /projects`, which registers a project in the registry.
 
 The app is built on the internal `tashtiot-apis-library` factory (`general_create_app`), which
 supplies base middleware, `/metrics`, health probes, Swagger UI at `/docs`, and the
@@ -63,14 +64,18 @@ Env-driven via `app/v1/config/conf.py` (`BaseSettings`, reads `.env`); see `.env
   router, installs the OpenAPI patcher, then appends the poller to `app.state.async_background_tasks`.
 - **`provider.py`** (`MongoConfigProvider`) — all Mongo access (one handle per collection: `self.enterprise`
   / `self.naming` / `self.projects`), `aiocache` (60s TTL), config cascade, naming resolution, project
-  registry, the coordinate catalog (`get_coordinate_catalog`), and the background allowlist-sync loop. This
-  service is the Mongo-backed **origin**; the library only ships a remote HTTP-proxy provider
+  registry, project registration (`add_project`), the coordinate catalog (`get_coordinate_catalog`), and
+  the background allowlist-sync loop. This service is the Mongo-backed **origin**; the library only ships
+  a remote HTTP-proxy provider
   (`RemoteConfigProvider`), so this provider stays local.
 - **`models.py`** — local write-side Pydantic models (one per collection) for write-time validation in
   `scripts/seed_config.py`. `EnterpriseConfigurationDoc` is fully nested (`SpaceNode → NetworkNode →
   RegionNode → IslandNode → EnvironmentNode`, `extra="forbid"`); per-level `config` payloads stay
   free-form. `CoordinateCatalogResponse` is **not** here — it's consumed from the library's `config_api`.
-- **`routes.py`** — `/projects`, `/coordinates` (discovery, sourced from the enterprise config tree;
+  `CreateProjectRequest`/`CreateProjectResponse` (the `POST /projects` body and reply) are also local: the
+  library ships only the read-only `RemoteConfigProvider`, so it has no write-side contract to share.
+- **`routes.py`** — `GET /projects`, `POST /projects` (register a project — see below),
+  `/coordinates` (discovery, sourced from the enterprise config tree;
   200 + empty arrays when unseeded), `/coordinates/tree` (same values as the nested hierarchy via
   `provider.get_coordinate_tree`, typed `CoordinateTreeResponse`), `/config` (strict, 422 if any
   coordinate missing), `/naming` (all optional).
@@ -110,6 +115,22 @@ regenerates with current enums.
 Two guards that must be preserved when editing validators:
 - Validators are **permissive when the allowlist set is empty** (pre-first-poll / missing document).
 - Validators are **permissive for omitted (`None`) coordinates**.
+
+### Project registration (`POST /projects`) — the only write path
+
+`provider.add_project` is a single `update_one({}, {"$addToSet": {"projects": name}}, upsert=True)`:
+`$addToSet` makes registration atomic and idempotent **in Mongo**, so concurrent registrations of the same
+name cannot duplicate it and no read-check-write race exists; `upsert` creates the registry document when
+the collection has never been seeded. The route maps the result to a status code — **201** newly
+registered, **200** already present — and `CreateProjectRequest` enforces a kebab-case slug
+(`^[a-z0-9]+(-[a-z0-9]+)*$`, 2-64 chars, `extra="forbid"`) because these names flow into the coordinate
+allowlist and downstream host/cname naming.
+
+On a successful write the provider calls `self._cache.clear()` — a deliberate full flush rather than
+per-key invalidation, since a project appears in three cached payloads (`get_all_projects`,
+`get_coordinate_catalog`, `get_coordinate_tree`) and registrations are rare. The new name becomes a valid
+`project` **coordinate** (and a Swagger enum value) only after the next poll, within
+`POLL_INTERVAL_SECONDS` — the write path deliberately does not touch `LIVE_ALLOWED_PROJECTS` itself.
 
 ### App-wiring subtlety
 
