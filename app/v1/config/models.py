@@ -92,3 +92,27 @@ class ProjectRegistryDoc(BaseModel):
     """Flat catalog of authorized application names (collection ``project_registry``)."""
 
     projects: List[str] = Field(default_factory=list)
+
+
+class CreateProjectRequest(BaseModel):
+    """Body of ``POST /projects``. Project names are a write boundary: they end up
+    in the registry allowlist and downstream in host/cname naming, so the slug
+    pattern is enforced here rather than trusted from the caller."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(
+        ...,
+        pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$",
+        min_length=2,
+        max_length=64,
+        description="Kebab-case project system name, e.g. 'platform'.",
+        examples=["platform"],
+    )
+
+
+class CreateProjectResponse(BaseModel):
+    """Echo of the registered project name. The status code carries the outcome:
+    201 when newly registered, 200 when it was already in the registry."""
+
+    name: str

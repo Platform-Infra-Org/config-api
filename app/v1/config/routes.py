@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from loguru import logger
 
 from .conf import config
+from .models import CreateProjectRequest, CreateProjectResponse
 from .provider import MongoConfigProvider
 from tashtiot_apis_library.fastapi_template.config_api import (
     InfraMetadata, RequiredInfraMetadata,
@@ -13,8 +14,8 @@ from tashtiot_apis_library.fastapi_template.config_api import (
 def get_v1_config_router(provider: MongoConfigProvider) -> APIRouter:
     """Create the APIRouter for the MongoDB-backed infrastructure Config API.
 
-    These are read-only GET routes, so every coordinate binds from query
-    parameters via ``Depends()`` — there is no request body anywhere.
+    The read routes bind every coordinate from query parameters via
+    ``Depends()``; only project registration takes a request body.
     """
     router = APIRouter(prefix=config.API_PREFIX, tags=config.API_TAGS)
 
@@ -25,6 +26,25 @@ def get_v1_config_router(provider: MongoConfigProvider) -> APIRouter:
         if not project_list:
             raise HTTPException(status_code=404, detail="The project inventory catalog is empty.")
         return AllProjectsResponse(projects=project_list)
+
+    @router.post(
+        "/projects",
+        response_model=CreateProjectResponse,
+        status_code=201,
+        name="Register a project",
+    )
+    async def register_platform_project(
+        payload: CreateProjectRequest, response: Response,
+    ) -> CreateProjectResponse:
+        """Add a project to the authorized registry.
+
+        Idempotent: registering a name that already exists is a 200 with no
+        change, while a genuine registration is a 201. The project becomes a
+        valid ``project`` coordinate once the background poller refreshes the
+        allowlist (within ``POLL_INTERVAL_SECONDS``)."""
+        if not await provider.add_project(payload.name):
+            response.status_code = 200
+        return CreateProjectResponse(name=payload.name)
 
     @router.get("/coordinates", response_model=CoordinateCatalogResponse, name="List allowed coordinate values")
     async def list_coordinate_catalog() -> CoordinateCatalogResponse:
