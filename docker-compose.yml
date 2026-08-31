@@ -1,0 +1,19 @@
+# Local MongoDB for the Config API. `docker compose up -d`, then seed it with
+# `uv run python scripts/seed_config.py`.
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: config-api-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
